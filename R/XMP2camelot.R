@@ -1,8 +1,4 @@
-
-
-
-#' Convert bridge lables to camelot metadata
-#'
+#' read XMP metadata and write it as camelot flavored data.frame
 #' @description This function will read photos metadata, convert it into a camelot report as good as we could, then write the camelot flavored data frame to the report_path
 #' @details Please check the package exifr for instructions on how to install needed dependencies, especially see ?exifr::read_exif, Make sure that exiftool are proper configed, check documentation in exifr and exiftool https://exiftool.org/.
 #' @param photo_path where to find the files
@@ -16,9 +12,7 @@
 #' @export
 #'
 
-#lapply(list.files("./data", full.names = T), load) # this is needed if package not installed
-
-bridge2camelot <- function(photo_path, report_path, report_name = paste0( "bridge2camelot-",Sys.Date()),
+xmp2camelot <- function(photo_path, report_path, report_name = paste0( "xmp2camelot-",Sys.Date()),
                            maxentries = 65535,
                            extensions = c("JPG","JPEG","PNG"),
                            progress = TRUE,
@@ -49,11 +43,19 @@ bridge2camelot <- function(photo_path, report_path, report_name = paste0( "bridg
   i_report <- 1 # the report
   error_file <- c()
   error_message <- c()
-  temp <- camelotheader
+
+  getinfo <- tryCatch(xmp2camelot_helper(files[1]),
+                      error = function(e){e$message})
+
+  if( "character" %in% class(getinfo)){
+    stop(paste0("the very first file failed with error:\n",getinfo,"\nplease check"))
+  }
+
+  temp <- getinfo[-1,]
   curr_report_name <- paste(report_path,paste0(report_name,"-r1.csv"),sep = "/")
 
   for (i in 1:n_files) {
-    getinfo <- tryCatch(bridge2camelot_helper(files[i]),
+    getinfo <- tryCatch(xmp2camelot_helper(files[i]),
                         error = function(e){e$message})
 
     if( "character" %in% class(getinfo)){
@@ -103,56 +105,13 @@ bridge2camelot <- function(photo_path, report_path, report_name = paste0( "bridg
 }
 
 
-bridge2camelot_helper <- function(thefile){
-  temp <- camelotheader
-  temp <- rbind(temp,rep(NA,78))
-  colnames(temp) <- colnames(camelotheader)
+xmp2camelot_helper <- function(thefile){
   exifinfo <- read_exif(thefile)
   if(is.null(exifinfo$Subject)){
     stop("no tag in the photo")
   }
   xmpinfo <- exifinfo$Subject[[1]]
-
-  any_match <- colnames(temp) %in% colnames(exifinfo)
-  any_match <- colnames(temp)[any_match]
-  temp[,any_match] <- exifinfo[,any_match]
-
-  sitee <- regexpr("CN*", xmpinfo)!=-1
-  if(sum(sitee)>1){
-    stop("multiple matched site names")
-  }
-  temp[,"Camera.Name"] <- xmpinfo[sitee]
-
-
-  island_list_local <- paste0(island_list,"$")
-  island_list_local <- paste0(island_list_local, collapse = "|")
-  islandd <- regexpr(island_list_local, xmpinfo)!=-1
-  if(sum(islandd)>1){
-    stop("multiple matched island names")
-  }
-  temp[,"Site.Name"] <- xmpinfo[islandd]
-
-
-  spp_list_local <- paste0(spp_list, "$")
-  spp_list_local <- paste0(spp_list_local, collapse = "|")
-  sppp <- regexpr(spp_list_local, xmpinfo) != -1
-
-  if(sum(sppp)>1){
-    stop("multiple matched species name, this is possible, please check by hand")
-  }
-
-  temp[,"Species"] <- xmpinfo[sppp]
-
-  xmprest <- xmpinfo[(!sppp) & (!islandd) & (!sitee)]
-  if(length(xmprest)>0){
-    temp[,"Notes"] <- paste(xmprest,collapse = " ")
-  }
-
-  temp[,"Absolute.Path"] <- exifinfo[,"SourceFile"]
-  datetime <- as.POSIXlt.character(exifinfo$ModifyDate, format = "%Y:%m:%d %H:%M:%OS", tz = "CDT")
-  datetime <- sub(" CDT","", datetime)
-  temp[,"Date.Time"] <- datetime
-
+  temp <- fromJSON(xmpinfo)
   return(temp)
 }
 
