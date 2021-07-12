@@ -1,6 +1,6 @@
 # CamelotXMP
 
-This package is part of the Van Deelen/Drake lab camera trap data manage infrastructure. The main goal is to write metadata from [Camelot](https://camelotproject.org/) into the [XMP metadata](https://en.wikipedia.org/wiki/Extensible_Metadata_Platform) of the photo files and vice versa. 
+This package is part of the Van Deelen/Drake lab camera trap data management infrastructure at UW-Madison. The main goal is to write metadata from [Camelot](https://camelotproject.org/) into the [XMP metadata](https://en.wikipedia.org/wiki/Extensible_Metadata_Platform) of the photo files and vice versa. 
 
 ## Dependencies
 
